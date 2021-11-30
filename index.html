@@ -8,26 +8,132 @@
 		</style>
 	</head>
 	<body>
+		<canvas id="tela" width="600" height="400"></canvas>
 		<script src="js/three.js"></script>
 		<script>
+			const canvas = document.querySelector('#tela');
 			const scene = new THREE.Scene();
-            const camera = new THREE.PerspectiveCamera( 75, window.innerWidth / window.innerHeight, 0.1, 1000 );
+			const aspect = canvas.clientWidth / canvas.clientHeight;
+			const camera = new THREE.PerspectiveCamera( 75, window.innerWidth / window.innerHeight, 0.1, 1000 );
+			const renderer = new THREE.WebGLRenderer({canvas, antialias:true});
 
-            const renderer = new THREE.WebGLRenderer();
+			const light1 = new THREE.DirectionalLight(0xFFFFFF, 1);
+			const light2 = new THREE.DirectionalLight(0xFFFFFF, 1);
+			light1.position.set(5,5,5);
+			light2.position.set(-5,5,5);
+
+			var point1 = 0;
+			var point2 = 0;
+
+			var score = document.createElement('h1');
+			// score.style.width = 1000 + 'px';
+			// score.style.height = 1000 + 'px';
+			console.log(canvas.clientHeight/2);
+			score.style.textAlign = 'center';
+			// score.style.top = canvas.clientHeight/2 + 'px';
+			// score.style.left = canvas.clientWidth/2 + 'px';
+			document.body.appendChild(score);
+
             renderer.setSize( window.innerWidth, window.innerHeight );
             document.body.appendChild( renderer.domElement );
-
-            const geometry = new THREE.BoxGeometry();
-            const material = new THREE.MeshBasicMaterial( { color: 0x00ff00 } );
-            const cube = new THREE.Mesh( geometry, material );
-            scene.add( cube );
-
+            const cube1 = new THREE.Mesh( new THREE.BoxGeometry(0.15, 3), new THREE.MeshPhongMaterial( { color: 0xffffff } ) );
+			const cube2 = new THREE.Mesh( new THREE.BoxGeometry(0.15, 3), new THREE.MeshPhongMaterial( { color: 0xffffff } ) );
+			const ball = new THREE.Mesh( new THREE.SphereGeometry( 0.4, 32 ), new THREE.MeshPhongMaterial( { color: 0xff0000 } ) );
+			const field = new THREE.Mesh( new THREE.BoxGeometry(0.2, 7, 14), new THREE.MeshPhongMaterial( { color: 0x00ff00 } ) );
+			scene.add( ball );
+            scene.add( cube1 );
+			scene.add( field );
+			ball.position.set(0, 0, 0);
+			field.rotation.y = 1.5707;
+			field.position.set(0, 0, -ball.geometry.parameters.radius);
+			cube1.position.set(-6, 0, 0);
+			cube2.position.set(6, 0, 0);
+			scene.add( cube2 );
+			scene.add( light1 );
+			scene.add( light2 );
             camera.position.z = 5;
+
+
+			const speed = 0.05;
+			var dir_x = 2;
+			var dir_y = 2;
+
+
+			document.addEventListener('keydown',onDocumentKeyDown,false);
+			function onDocumentKeyDown(event){
+				event = event || window.event;
+				var keycode = event.keyCode;
+				console.log(cube1.position.y);
+
+				if (keycode === 65) {
+					if (cube1.position.y >= -field.geometry.parameters.height/2 + cube1.geometry.parameters.height/2){
+						cube1.position.y -= speed*2;
+					}
+				}
+				if (keycode === 81) {
+					if (cube1.position.y <= field.geometry.parameters.height/2 - cube1.geometry.parameters.height/2) {
+						cube1.position.y += speed*2;
+					}
+				}
+				if (keycode === 76) {
+					if (cube2.position.y >= -field.geometry.parameters.height/2 + cube2.geometry.parameters.height/2){
+						cube2.position.y -= speed*2;
+					}
+				}
+				if (keycode === 79) {
+					if (cube2.position.y <= field.geometry.parameters.height/2 - cube2.geometry.parameters.height/2) {
+						cube2.position.y += speed*2;
+					}
+				}
+			}
+
+			// https://discourse.threejs.org/t/collisions-two-objects/4125/3
+			function detectCollisionCubes(object1, object2){
+			  object1.geometry.computeBoundingBox(); //not needed if its already calculated
+			  object2.geometry.computeBoundingBox();
+			  object1.updateMatrixWorld();
+			  object2.updateMatrixWorld();
+
+			  var box1 = object1.geometry.boundingBox.clone();
+			  box1.applyMatrix4(object1.matrixWorld);
+
+			  var box2 = object2.geometry.boundingBox.clone();
+			  box2.applyMatrix4(object2.matrixWorld);
+
+			  return box1.intersectsBox(box2);
+			}
+
 			function animate() {
 				requestAnimationFrame( animate );
+
 				renderer.render( scene, camera );
-				cube.rotation.x += 0.01;
-				cube.rotation.y += 0.01;
+				ball.position.x -= dir_x * speed/2;
+				ball.position.y -= dir_y * speed/2;
+				console.log(cube1.geometry.parameters);
+				score.innerHTML = point1.toString() + ":" + point2.toString();
+				// console.log(field.innerHeight/2)
+				if (ball.position.y <= -field.geometry.parameters.height/2 + ball.geometry.parameters.radius){
+					dir_y = -dir_y;
+				}
+				if (ball.position.y >= field.geometry.parameters.height/2 - ball.geometry.parameters.radius){
+					dir_y = -dir_y;
+				}
+				if (ball.position.x <= -field.geometry.parameters.depth/2 + ball.geometry.parameters.radius){
+					ball.position.set(0, 0, 0);
+					point2+=1;
+					dir_y = 2;
+				}
+				if (ball.position.x >= field.geometry.parameters.depth/2 - ball.geometry.parameters.radius){
+					ball.position.set(0, 0, 0);
+					point1+=1;
+					dir_y = 2;
+				}
+				if (detectCollisionCubes(ball, cube1)){
+					dir_x = -dir_x
+				}
+				if (detectCollisionCubes(ball, cube2)){
+					dir_x = -dir_x
+				}
 			}
 			animate();
 
